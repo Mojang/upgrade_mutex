@@ -647,12 +647,21 @@ template <class Mutex>
 void
 upgrade_lock<Mutex>::lock()
 {
+#if defined(UPGRADE_MUTEX_NOTHROW)
+    if (m_ == nullptr)
+        std::terminate();
+
+    if (owns_)
+        std::terminate();
+#else
     if (m_ == nullptr)
         throw std::system_error(std::error_code(EPERM, std::system_category()),
                                    "upgrade_lock::lock: references null mutex");
     if (owns_)
         throw std::system_error(std::error_code(EDEADLK, std::system_category()),
                                           "upgrade_lock::lock: already locked");
+#endif
+
     m_->lock_upgrade();
     owns_ = true;
 }
@@ -661,12 +670,20 @@ template <class Mutex>
 bool
 upgrade_lock<Mutex>::try_lock()
 {
+#if defined(UPGRADE_MUTEX_NOTHROW)
+    if (m_ == nullptr)
+        std::terminate();
+
+    if (owns_)
+        std::terminate();
+#else
     if (m_ == nullptr)
         throw std::system_error(std::error_code(EPERM, std::system_category()),
                                "upgrade_lock::try_lock: references null mutex");
     if (owns_)
         throw std::system_error(std::error_code(EDEADLK, std::system_category()),
                                       "upgrade_lock::try_lock: already locked");
+#endif
     owns_ = m_->try_lock_upgrade();
     return owns_;
 }
@@ -677,12 +694,20 @@ bool
 upgrade_lock<Mutex>::try_lock_until(
                        const std::chrono::time_point<Clock, Duration>& abs_time)
 {
+#if defined(UPGRADE_MUTEX_NOTHROW)
+    if (m_ == nullptr)
+        std::terminate();
+    if (owns_)
+        std::terminate();
+#else
     if (m_ == nullptr)
         throw std::system_error(std::error_code(EPERM, std::system_category()),
                          "upgrade_lock::try_lock_until: references null mutex");
     if (owns_)
         throw std::system_error(std::error_code(EDEADLK, std::system_category()),
                                 "upgrade_lock::try_lock_until: already locked");
+#endif
+
     owns_ = m_->try_lock_upgrade_until(abs_time);
     return owns_;
 }
@@ -691,9 +716,15 @@ template <class Mutex>
 void
 upgrade_lock<Mutex>::unlock()
 {
+#if defined(UPGRADE_MUTEX_NOTHROW)
+    if (!owns_)
+        std::terminate();
+#else
     if (!owns_)
         throw std::system_error(std::error_code(EPERM, std::system_category()),
                                 "upgrade_lock::unlock: not locked");
+#endif
+
     m_->unlock_upgrade();
     owns_ = false;
 }
